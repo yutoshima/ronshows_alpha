@@ -154,10 +154,28 @@ const useStore = create<RFState>((set, get) => ({
 
   onConnect: (connection) => {
     get().pushHistory();
+    const { settings } = get();
+    const direction = settings.defaultArrowDirection;
+    const color = settings.linkColors.basic;
+
+    let markerEnd, markerStart;
+    if (direction === 'forward') {
+      markerEnd = { type: MarkerType.ArrowClosed, color };
+      markerStart = undefined;
+    } else if (direction === 'backward') {
+      markerEnd = undefined;
+      markerStart = { type: MarkerType.ArrowClosed, color };
+    } else if (direction === 'bidirectional') {
+      markerEnd = { type: MarkerType.ArrowClosed, color };
+      markerStart = { type: MarkerType.ArrowClosed, color };
+    }
+
     const edge: CustomEdge = {
       ...connection,
       id: uuidv4(),
       ...DEFAULT_EDGE_STYLE,
+      markerEnd,
+      markerStart,
       interactionWidth: 20,
       className: 'cursor-pointer hover:stroke-blue-500 transition-colors',
     };

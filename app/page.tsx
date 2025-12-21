@@ -16,6 +16,10 @@ import { PROBLEM_DEF, CustomNode, LINK_STYLES } from '../lib/constants';
 import useStore, { DEFAULT_SETTINGS, findLimiterGroups } from '../lib/store';
 import { v4 as uuidv4 } from 'uuid';
 
+// ノードの実際のサイズ定数
+const NODE_WIDTH = 180;   // UniversalNodeのminWidth
+const NODE_HEIGHT = 64;   // padding(py-3 = 24px) + text(~16px) + border(4px) + margin
+
 const GroupBoxes = () => {
   const nodes = useStore((state) => state.nodes);
   const edges = useStore((state) => state.edges);
@@ -42,8 +46,8 @@ const GroupBoxes = () => {
         const padding = settings.groupBox.padding;
         const minX = Math.min(...group.map(n => n.position.x)) - padding;
         const minY = Math.min(...group.map(n => n.position.y)) - padding;
-        const maxX = Math.max(...group.map(n => n.position.x + 180)) + padding;
-        const maxY = Math.max(...group.map(n => n.position.y + 60)) + padding;
+        const maxX = Math.max(...group.map(n => n.position.x + NODE_WIDTH)) + padding;
+        const maxY = Math.max(...group.map(n => n.position.y + NODE_HEIGHT)) + padding;
 
         const width = maxX - minX;
         const height = maxY - minY;
@@ -355,19 +359,22 @@ const Sidebar = () => {
 
   const onNodeClick = (nodeDef: any) => {
     const nodes = store.nodes;
-    let x = 100;
-    let y = 100;
-    const spacing = 150;
+    const HORIZONTAL_SPACING = 220;  // NODE_WIDTH (180) + マージン (40)
+    const VERTICAL_SPACING = 100;     // 行間
+    const COLUMNS = 4;                 // 1行あたりのノード数
+    const START_X = 100;
+    const START_Y = 100;
+
+    let x = START_X;
+    let y = START_Y;
 
     if (nodes.length > 0) {
-      const lastNode = nodes[nodes.length - 1];
-      x = lastNode.position.x + spacing;
-      y = lastNode.position.y;
+      const index = nodes.length;
+      const col = index % COLUMNS;
+      const row = Math.floor(index / COLUMNS);
 
-      if (x > 800) {
-        x = 100;
-        y = lastNode.position.y + 100;
-      }
+      x = START_X + col * HORIZONTAL_SPACING;
+      y = START_Y + row * VERTICAL_SPACING;
     }
 
     const newNode: CustomNode = {
