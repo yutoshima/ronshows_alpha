@@ -12,7 +12,7 @@ import ReactFlow, {
   useViewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { PROBLEM_DEF, CustomNode, LINK_STYLES } from '../lib/constants';
+import { PROBLEMS, CustomNode, LINK_STYLES } from '../lib/constants';
 import useStore, { DEFAULT_SETTINGS, findLimiterGroups } from '../lib/store';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -138,6 +138,257 @@ const EdgeContextMenu = ({ x, y, onClose, onSelect, onDirectionSelect }: any) =>
       </button>
 
       <button onClick={onClose} className="text-left px-2 py-1 text-xs text-gray-400 hover:text-gray-600 mt-1">閉じる</button>
+    </div>
+  );
+};
+
+const LogPanel = () => {
+  const logs = useStore((state) => state.logs);
+  const exportLogs = useStore((state) => state.exportLogs);
+  const clearLogs = useStore((state) => state.clearLogs);
+
+  return (
+    <div className="p-4 space-y-4 h-full flex flex-col">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-slate-800">操作ログ</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={exportLogs}
+            className="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition-colors"
+          >
+            エクスポート
+          </button>
+          <button
+            onClick={clearLogs}
+            className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-xs font-medium transition-colors"
+          >
+            クリア
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-2 border border-slate-200 rounded p-2 bg-white">
+        {logs.length === 0 ? (
+          <div className="text-center text-slate-400 text-sm py-4">ログはまだありません</div>
+        ) : (
+          logs.map((log) => (
+            <div key={log.id} className="text-xs p-2 bg-slate-50 rounded border border-slate-100">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-500 font-mono whitespace-nowrap">
+                  {new Date(log.timestamp).toLocaleTimeString()}
+                </span>
+                <span className="flex-1 text-slate-700">{log.description}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ProblemSelector = () => {
+  const currentProblemId = useStore((state) => state.currentProblemId);
+  const setCurrentProblem = useStore((state) => state.setCurrentProblem);
+  const goToNext = useStore((state) => state.goToNextProblem);
+  const goToPrevious = useStore((state) => state.goToPreviousProblem);
+
+  const currentIndex = PROBLEMS.findIndex((p) => p.id === currentProblemId);
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={goToPrevious}
+        disabled={currentIndex === 0}
+        className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        ← 前へ
+      </button>
+      <select
+        value={currentProblemId}
+        onChange={(e) => setCurrentProblem(e.target.value)}
+        className="px-3 py-1.5 bg-white text-slate-800 rounded text-sm font-medium border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        {PROBLEMS.map((p, idx) => (
+          <option key={p.id} value={p.id}>
+            問題 {idx + 1}: {p.title}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={goToNext}
+        disabled={currentIndex === PROBLEMS.length - 1}
+        className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        次へ →
+      </button>
+    </div>
+  );
+};
+
+const ProblemModal = () => {
+  const show = useStore((state) => state.showProblemModal);
+  const toggle = useStore((state) => state.toggleProblemModal);
+  const problemId = useStore((state) => state.currentProblemId);
+
+  const problem = PROBLEMS.find((p) => p.id === problemId);
+  if (!show || !problem) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={toggle}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+          <h2 className="text-xl font-bold text-slate-800">{problem.title}</h2>
+          <button
+            onClick={toggle}
+            className="text-slate-400 hover:text-slate-600 text-2xl font-bold w-8 h-8 flex items-center justify-center"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1">
+          <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed">
+            {problem.description}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FeedbackPanel = () => {
+  const result = useStore((state) => state.feedbackResult);
+  const goToNext = useStore((state) => state.goToNextProblem);
+  const reset = useStore((state) => state.resetProblem);
+
+  if (!result) return null;
+
+  return (
+    <div
+      className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full border-4 ${
+        result.correct ? 'border-green-500' : 'border-red-500'
+      }`}
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className={`text-4xl ${
+            result.correct ? 'text-green-500' : 'text-red-500'
+          }`}
+        >
+          {result.correct ? '✓' : '×'}
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-slate-800">
+            {result.correct ? '正解です！' : '不正解です'}
+          </h3>
+          <div className="text-lg text-slate-600">スコア: {result.score}/100</div>
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div
+          className={`flex items-center gap-2 p-2 rounded ${
+            result.details.nodesCorrect ? 'bg-green-50' : 'bg-red-50'
+          }`}
+        >
+          <span
+            className={`font-bold ${
+              result.details.nodesCorrect ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {result.details.nodesCorrect ? '✓' : '×'}
+          </span>
+          <span className="text-sm text-slate-700">
+            ノード: {result.details.nodesCorrect ? '正解' : '不正解'}
+          </span>
+        </div>
+        <div
+          className={`flex items-center gap-2 p-2 rounded ${
+            result.details.edgesCorrect ? 'bg-green-50' : 'bg-red-50'
+          }`}
+        >
+          <span
+            className={`font-bold ${
+              result.details.edgesCorrect ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {result.details.edgesCorrect ? '✓' : '×'}
+          </span>
+          <span className="text-sm text-slate-700">
+            接続: {result.details.edgesCorrect ? '正解' : '不正解'}
+          </span>
+        </div>
+        <div
+          className={`flex items-center gap-2 p-2 rounded ${
+            result.details.edgeTypesCorrect ? 'bg-green-50' : 'bg-red-50'
+          }`}
+        >
+          <span
+            className={`font-bold ${
+              result.details.edgeTypesCorrect ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {result.details.edgeTypesCorrect ? '✓' : '×'}
+          </span>
+          <span className="text-sm text-slate-700">
+            リンク種類: {result.details.edgeTypesCorrect ? '正解' : '不正解'}
+          </span>
+        </div>
+        <div
+          className={`flex items-center gap-2 p-2 rounded ${
+            result.details.arrowDirectionsCorrect ? 'bg-green-50' : 'bg-red-50'
+          }`}
+        >
+          <span
+            className={`font-bold ${
+              result.details.arrowDirectionsCorrect
+                ? 'text-green-600'
+                : 'text-red-600'
+            }`}
+          >
+            {result.details.arrowDirectionsCorrect ? '✓' : '×'}
+          </span>
+          <span className="text-sm text-slate-700">
+            矢印向き: {result.details.arrowDirectionsCorrect ? '正解' : '不正解'}
+          </span>
+        </div>
+      </div>
+
+      {result.messages.length > 0 && (
+        <div className="mb-4 p-3 bg-slate-50 rounded border border-slate-200">
+          <div className="text-xs font-bold text-slate-600 mb-2">フィードバック:</div>
+          <div className="space-y-1">
+            {result.messages.map((msg, i) => (
+              <p key={i} className="text-sm text-slate-700">
+                • {msg}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {result.correct && (
+          <button
+            onClick={goToNext}
+            className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded font-bold transition-colors"
+          >
+            次の問題へ →
+          </button>
+        )}
+        <button
+          onClick={reset}
+          className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-bold transition-colors"
+        >
+          やり直す
+        </button>
+      </div>
     </div>
   );
 };
@@ -352,8 +603,12 @@ const SettingsPanel = () => {
 };
 
 const Sidebar = () => {
-  const [activeTab, setActiveTab] = useState<'nodes' | 'settings'>('nodes');
+  const [activeTab, setActiveTab] = useState<'nodes' | 'settings' | 'logs'>('nodes');
   const store = useStore();
+  const currentProblemId = useStore((state) => state.currentProblemId);
+
+  const currentProblem = PROBLEMS.find((p) => p.id === currentProblemId);
+
   const onDragStart = (event: React.DragEvent, nodeDef: any) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(nodeDef));
     event.dataTransfer.effectAllowed = 'move';
@@ -393,7 +648,7 @@ const Sidebar = () => {
     <aside className="w-64 bg-slate-50 border-r border-slate-200 flex flex-col h-full">
       <div className="flex border-b border-slate-200 bg-white">
         <button
-          className={`flex-1 px-4 py-3 text-sm font-bold transition-colors ${
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-colors ${
             activeTab === 'nodes' ? 'bg-white border-b-2 border-blue-500 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
           }`}
           onClick={() => setActiveTab('nodes')}
@@ -401,21 +656,29 @@ const Sidebar = () => {
           ノード
         </button>
         <button
-          className={`flex-1 px-4 py-3 text-sm font-bold transition-colors ${
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-colors ${
             activeTab === 'settings' ? 'bg-white border-b-2 border-blue-500 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
           }`}
           onClick={() => setActiveTab('settings')}
         >
           設定
         </button>
+        <button
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-colors ${
+            activeTab === 'logs' ? 'bg-white border-b-2 border-blue-500 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
+          }`}
+          onClick={() => setActiveTab('logs')}
+        >
+          ログ
+        </button>
       </div>
 
-      <div className="p-4 overflow-y-auto flex-1">
+      <div className="overflow-y-auto flex-1">
         {activeTab === 'nodes' ? (
-          <>
+          <div className="p-4">
             <h2 className="text-lg font-bold mb-4 text-slate-800">ノードパレット</h2>
             <div className="space-y-3">
-              {PROBLEM_DEF.nodes.map((nodeDef) => (
+              {currentProblem && currentProblem.nodes.map((nodeDef) => (
                 <div
                   key={nodeDef.id}
                   className={`p-3 rounded-lg shadow-sm cursor-pointer border-2 text-sm font-medium transition-transform hover:scale-105 ${
@@ -440,9 +703,11 @@ const Sidebar = () => {
                 <li>線をクリックして種類を変更</li>
               </ul>
             </div>
-          </>
-        ) : (
+          </div>
+        ) : activeTab === 'settings' ? (
           <SettingsPanel />
+        ) : (
+          <LogPanel />
         )}
       </div>
 
@@ -573,10 +838,31 @@ const CanvasArea = () => {
 };
 
 export default function Home() {
+  const store = useStore();
+  const currentProblemId = useStore((state) => state.currentProblemId);
+  const currentProblem = PROBLEMS.find((p) => p.id === currentProblemId);
+
   return (
     <main className="flex h-screen flex-col font-sans">
-      <header className="bg-slate-800 text-white p-4 shadow-md z-10">
-        <h1 className="text-xl font-bold">{PROBLEM_DEF.title}</h1>
+      <header className="bg-slate-800 text-white p-4 shadow-md z-10 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold">論証グラフ作成ツール</h1>
+          <ProblemSelector />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={store.toggleProblemModal}
+            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded text-sm font-medium transition-colors"
+          >
+            📖 問題文
+          </button>
+          <button
+            onClick={store.submitAnswer}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm font-bold transition-colors"
+          >
+            ✓ 完成
+          </button>
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
         <ReactFlowProvider>
@@ -584,6 +870,8 @@ export default function Home() {
           <CanvasArea />
         </ReactFlowProvider>
       </div>
+      <ProblemModal />
+      <FeedbackPanel />
     </main>
   );
 }
