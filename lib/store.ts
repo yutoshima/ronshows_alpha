@@ -8,7 +8,7 @@ import {
   applyEdgeChanges,
   MarkerType,
 } from 'reactflow';
-import { CustomNode, CustomEdge, LINK_STYLES, DEFAULT_EDGE_STYLE, PROBLEMS, DEFAULT_PROBLEM } from './constants';
+import { CustomNode, CustomEdge, LINK_STYLES, DEFAULT_EDGE_STYLE, PROBLEMS, DEFAULT_PROBLEM, Problem, validateProblem } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 
 export type FeedbackRuleConfig = {
@@ -91,6 +91,7 @@ type RFState = {
   logs: LogEntry[];
   showProblemModal: boolean;
   feedbackResult: FeedbackResult | null;
+  customProblems: Problem[];
 
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -112,6 +113,8 @@ type RFState = {
   goToNextProblem: () => void;
   goToPreviousProblem: () => void;
   resetProblem: () => void;
+  importProblems: (file: File) => Promise<{ success: boolean; message: string; count?: number }>;
+  getAllProblems: () => Problem[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -193,6 +196,18 @@ const loadSettings = (): Settings => {
 const saveSettings = (settings: Settings) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('ronshows_settings', JSON.stringify(settings));
+  }
+};
+
+const loadCustomProblems = (): Problem[] => {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem('ronshows_custom_problems');
+  return saved ? JSON.parse(saved) : [];
+};
+
+const saveCustomProblems = (problems: Problem[]) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('ronshows_custom_problems', JSON.stringify(problems));
   }
 };
 
@@ -333,6 +348,7 @@ const useStore = create<RFState>((set, get) => ({
   logs: [],
   showProblemModal: false,
   feedbackResult: null,
+  customProblems: loadCustomProblems(),
 
   pushHistory: () => {
     const { nodes, edges, past } = get();
@@ -529,7 +545,8 @@ const useStore = create<RFState>((set, get) => ({
   },
 
   setCurrentProblem: (problemId) => {
-    const problem = PROBLEMS.find(p => p.id === problemId);
+    const allProblems = get().getAllProblems();
+    const problem = allProblems.find(p => p.id === problemId);
     if (!problem) return;
 
     set({
@@ -581,7 +598,8 @@ const useStore = create<RFState>((set, get) => ({
 
   submitAnswer: () => {
     const { nodes, edges, currentProblemId, settings } = get();
-    const problem = PROBLEMS.find(p => p.id === currentProblemId);
+    const allProblems = get().getAllProblems();
+    const problem = allProblems.find(p => p.id === currentProblemId);
     if (!problem) return null;
 
     const { modelAnswer } = problem;
@@ -633,17 +651,19 @@ const useStore = create<RFState>((set, get) => ({
 
   goToNextProblem: () => {
     const { currentProblemId } = get();
-    const currentIndex = PROBLEMS.findIndex(p => p.id === currentProblemId);
-    if (currentIndex < PROBLEMS.length - 1) {
-      get().setCurrentProblem(PROBLEMS[currentIndex + 1].id);
+    const allProblems = get().getAllProblems();
+    const currentIndex = allProblems.findIndex(p => p.id === currentProblemId);
+    if (currentIndex < allProblems.length - 1) {
+      get().setCurrentProblem(allProblems[currentIndex + 1].id);
     }
   },
 
   goToPreviousProblem: () => {
     const { currentProblemId } = get();
-    const currentIndex = PROBLEMS.findIndex(p => p.id === currentProblemId);
+    const allProblems = get().getAllProblems();
+    const currentIndex = allProblems.findIndex(p => p.id === currentProblemId);
     if (currentIndex > 0) {
-      get().setCurrentProblem(PROBLEMS[currentIndex - 1].id);
+      get().setCurrentProblem(allProblems[currentIndex - 1].id);
     }
   },
 
@@ -660,6 +680,76 @@ const useStore = create<RFState>((set, get) => ({
       data: {},
       description: '問題をリセットしました',
     });
+  },
+
+  importProblems: async (file: File) => {
+    try {
+      const text = await file.text();
+      let data: any;
+
+      // JSON or CSV detection
+      if (file.name.endsWith('.json')) {
+        data = JSON.parse(text);
+      } else if (file.name.endsWith('.csv')) {
+        // Simple CSV parsing - expecting JSON in second column
+        const lines = text.trim().split('\n');
+        const problems: Problem[] = [];
+
+        for (let i = 1; i < lines.length; i++) { // Skip header
+          const line = lines[i];
+          // Find the second column (JSON data)
+          const firstComma = line.indexOf(',');
+          if (firstComma === -1) continue;
+          const jsonStr = line.substring(firstComma + 1).trim();
+
+          try {
+            const problem = JSON.parse(jsonStr);
+            if (validateProblem(problem)) {
+              problems.push(problem);
+            }
+          } catch (e) {
+            console.error('Failed to parse CSV row:', e);
+          }
+        }
+
+        data = problems;
+      } else {
+        return { success: false, message: 'サポートされていないファイル形式です。JSON or CSVファイルを使用してください。' };
+      }
+
+      // Validate and import
+      const problems: Problem[] = Array.isArray(data) ? data : [data];
+      const validProblems = problems.filter(validateProblem);
+
+      if (validProblems.length === 0) {
+        return { success: false, message: '有効な問題定義が見つかりませんでした。' };
+      }
+
+      const newCustomProblems = [...get().customProblems, ...validProblems];
+      set({ customProblems: newCustomProblems });
+      saveCustomProblems(newCustomProblems);
+
+      get().addLog({
+        type: 'problem_change',
+        data: { count: validProblems.length },
+        description: `問題をインポート: ${validProblems.length}件`,
+      });
+
+      return {
+        success: true,
+        message: `${validProblems.length}件の問題をインポートしました。`,
+        count: validProblems.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `インポートに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+      };
+    }
+  },
+
+  getAllProblems: () => {
+    return [...PROBLEMS, ...get().customProblems];
   },
 }));
 

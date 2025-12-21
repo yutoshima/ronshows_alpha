@@ -12,7 +12,7 @@ import ReactFlow, {
   useViewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { PROBLEMS, CustomNode, LINK_STYLES } from '../lib/constants';
+import { CustomNode, LINK_STYLES } from '../lib/constants';
 import useStore, { DEFAULT_SETTINGS, findLimiterGroups } from '../lib/store';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -187,13 +187,78 @@ const LogPanel = () => {
   );
 };
 
+const ProblemImport = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importProblems = useStore((state) => state.importProblems);
+  const [importing, setImporting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setMessage(null);
+
+    const result = await importProblems(file);
+
+    setImporting(false);
+    setMessage({
+      type: result.success ? 'success' : 'error',
+      text: result.message
+    });
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Clear message after 5 seconds
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.csv"
+        onChange={handleImport}
+        className="hidden"
+        id="problem-import"
+      />
+      <label
+        htmlFor="problem-import"
+        className={`px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium cursor-pointer transition-colors inline-block ${
+          importing ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
+      >
+        {importing ? 'インポート中...' : '📁 問題をインポート'}
+      </label>
+      {message && (
+        <div
+          className={`absolute top-full mt-2 right-0 px-3 py-2 rounded text-xs whitespace-nowrap z-50 ${
+            message.type === 'success'
+              ? 'bg-green-500 text-white'
+              : 'bg-red-500 text-white'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ProblemSelector = () => {
   const currentProblemId = useStore((state) => state.currentProblemId);
   const setCurrentProblem = useStore((state) => state.setCurrentProblem);
   const goToNext = useStore((state) => state.goToNextProblem);
   const goToPrevious = useStore((state) => state.goToPreviousProblem);
+  const getAllProblems = useStore((state) => state.getAllProblems);
 
-  const currentIndex = PROBLEMS.findIndex((p) => p.id === currentProblemId);
+  const allProblems = getAllProblems();
+  const currentIndex = allProblems.findIndex((p) => p.id === currentProblemId);
 
   return (
     <div className="flex items-center gap-2">
@@ -209,7 +274,7 @@ const ProblemSelector = () => {
         onChange={(e) => setCurrentProblem(e.target.value)}
         className="px-3 py-1.5 bg-white text-slate-800 rounded text-sm font-medium border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
-        {PROBLEMS.map((p, idx) => (
+        {allProblems.map((p, idx) => (
           <option key={p.id} value={p.id}>
             問題 {idx + 1}: {p.title}
           </option>
@@ -217,11 +282,12 @@ const ProblemSelector = () => {
       </select>
       <button
         onClick={goToNext}
-        disabled={currentIndex === PROBLEMS.length - 1}
+        disabled={currentIndex === allProblems.length - 1}
         className="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         次へ →
       </button>
+      <ProblemImport />
     </div>
   );
 };
@@ -230,8 +296,9 @@ const ProblemModal = () => {
   const show = useStore((state) => state.showProblemModal);
   const toggle = useStore((state) => state.toggleProblemModal);
   const problemId = useStore((state) => state.currentProblemId);
+  const getAllProblems = useStore((state) => state.getAllProblems);
 
-  const problem = PROBLEMS.find((p) => p.id === problemId);
+  const problem = getAllProblems().find((p) => p.id === problemId);
   if (!show || !problem) return null;
 
   return (
@@ -722,8 +789,9 @@ const Sidebar = () => {
   const [activeTab, setActiveTab] = useState<'nodes' | 'settings' | 'logs'>('nodes');
   const store = useStore();
   const currentProblemId = useStore((state) => state.currentProblemId);
+  const getAllProblems = useStore((state) => state.getAllProblems);
 
-  const currentProblem = PROBLEMS.find((p) => p.id === currentProblemId);
+  const currentProblem = getAllProblems().find((p) => p.id === currentProblemId);
 
   const onDragStart = (event: React.DragEvent, nodeDef: any) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(nodeDef));
@@ -956,7 +1024,8 @@ const CanvasArea = () => {
 export default function Home() {
   const store = useStore();
   const currentProblemId = useStore((state) => state.currentProblemId);
-  const currentProblem = PROBLEMS.find((p) => p.id === currentProblemId);
+  const getAllProblems = useStore((state) => state.getAllProblems);
+  const currentProblem = getAllProblems().find((p) => p.id === currentProblemId);
 
   return (
     <main className="flex h-screen flex-col font-sans">

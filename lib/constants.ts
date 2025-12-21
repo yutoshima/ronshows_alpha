@@ -157,3 +157,21 @@ export const PROBLEM_DEF = {
   title: DEFAULT_PROBLEM.title,
   nodes: DEFAULT_PROBLEM.nodes,
 };
+
+// インポート用のヘルパー関数
+export const validateProblem = (data: any): data is Problem => {
+  return (
+    typeof data.id === 'string' &&
+    typeof data.title === 'string' &&
+    typeof data.description === 'string' &&
+    Array.isArray(data.nodes) &&
+    data.nodes.every((n: any) =>
+      typeof n.id === 'string' &&
+      typeof n.label === 'string' &&
+      (n.type === 'premise' || n.type === 'claim')
+    ) &&
+    typeof data.modelAnswer === 'object' &&
+    Array.isArray(data.modelAnswer.nodes) &&
+    Array.isArray(data.modelAnswer.edges)
+  );
+};
