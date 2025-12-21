@@ -9,11 +9,68 @@ import ReactFlow, {
   Handle,
   Position,
   ConnectionMode,
+  useViewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { PROBLEM_DEF, CustomNode, LINK_STYLES } from '../lib/constants';
-import useStore, { DEFAULT_SETTINGS } from '../lib/store';
+import useStore, { DEFAULT_SETTINGS, findLimiterGroups } from '../lib/store';
 import { v4 as uuidv4 } from 'uuid';
+
+const GroupBoxes = () => {
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
+  const settings = useStore((state) => state.settings);
+  const { x, y, zoom } = useViewport();
+
+  const groups = useMemo(() => findLimiterGroups(nodes, edges), [nodes, edges]);
+
+  if (!settings.groupBox.enabled || groups.length === 0) return null;
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    >
+      {groups.map((group, index) => {
+        const padding = settings.groupBox.padding;
+        const minX = Math.min(...group.map(n => n.position.x)) - padding;
+        const minY = Math.min(...group.map(n => n.position.y)) - padding;
+        const maxX = Math.max(...group.map(n => n.position.x + 180)) + padding;
+        const maxY = Math.max(...group.map(n => n.position.y + 60)) + padding;
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const transformedX = minX * zoom + x;
+        const transformedY = minY * zoom + y;
+
+        return (
+          <rect
+            key={index}
+            x={transformedX}
+            y={transformedY}
+            width={width * zoom}
+            height={height * zoom}
+            fill={settings.groupBox.color}
+            fillOpacity={0.2}
+            stroke={settings.groupBox.color}
+            strokeWidth={settings.groupBox.borderWidth}
+            strokeOpacity={0.5}
+            rx={8 * zoom}
+            ry={8 * zoom}
+          />
+        );
+      })}
+    </svg>
+  );
+};
 
 const UniversalNode = ({ data, selected }: any) => {
   const isClaim = data.type === 'claim';
@@ -206,6 +263,76 @@ const SettingsPanel = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-slate-700 mb-2">グループボックス</h3>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="groupBoxEnabled"
+              checked={settings.groupBox.enabled}
+              onChange={(e) => updateSettings({
+                groupBox: { ...settings.groupBox, enabled: e.target.checked }
+              })}
+              className="w-4 h-4 cursor-pointer"
+            />
+            <label htmlFor="groupBoxEnabled" className="text-xs cursor-pointer">
+              限定リンクで繋がったノードを囲む
+            </label>
+          </div>
+
+          {settings.groupBox.enabled && (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-xs flex-1">ボックスの色</label>
+                <input
+                  type="color"
+                  value={settings.groupBox.color}
+                  onChange={(e) => updateSettings({
+                    groupBox: { ...settings.groupBox, color: e.target.value }
+                  })}
+                  className="w-12 h-7 border border-slate-300 rounded cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-700 mb-1">
+                  パディング: {settings.groupBox.padding}px
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="50"
+                  step="5"
+                  value={settings.groupBox.padding}
+                  onChange={(e) => updateSettings({
+                    groupBox: { ...settings.groupBox, padding: parseInt(e.target.value) }
+                  })}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-700 mb-1">
+                  枠線の太さ: {settings.groupBox.borderWidth}px
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="1"
+                  value={settings.groupBox.borderWidth}
+                  onChange={(e) => updateSettings({
+                    groupBox: { ...settings.groupBox, borderWidth: parseInt(e.target.value) }
+                  })}
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <button
@@ -418,6 +545,7 @@ const CanvasArea = () => {
         connectionMode={ConnectionMode.Loose}
         fitView
       >
+        <GroupBoxes />
         <Controls />
         <Background gap={16} size={1} />
       </ReactFlow>

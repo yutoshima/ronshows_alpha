@@ -32,6 +32,12 @@ export type Settings = {
     };
   };
   linkWidth: number;
+  groupBox: {
+    enabled: boolean;
+    color: string;
+    padding: number;
+    borderWidth: number;
+  };
 };
 
 type HistoryState = {
@@ -78,6 +84,12 @@ export const DEFAULT_SETTINGS: Settings = {
     },
   },
   linkWidth: 2,
+  groupBox: {
+    enabled: true,
+    color: '#93c5fd',
+    padding: 20,
+    borderWidth: 2,
+  },
 };
 
 const loadSettings = (): Settings => {
@@ -213,5 +225,52 @@ const useStore = create<RFState>((set, get) => ({
     saveSettings(updatedSettings);
   },
 }));
+
+// Helper function to find groups of nodes connected by limiter edges
+export const findLimiterGroups = (nodes: CustomNode[], edges: CustomEdge[]): CustomNode[][] => {
+  // Filter only limiter edges
+  const limiterEdges = edges.filter(e => e.label === '限定');
+
+  if (limiterEdges.length === 0) return [];
+
+  // Build adjacency list
+  const adjacency = new Map<string, Set<string>>();
+  nodes.forEach(node => adjacency.set(node.id, new Set()));
+
+  limiterEdges.forEach(edge => {
+    if (edge.source && edge.target) {
+      adjacency.get(edge.source)?.add(edge.target);
+      adjacency.get(edge.target)?.add(edge.source);
+    }
+  });
+
+  // Find connected components using DFS
+  const visited = new Set<string>();
+  const groups: CustomNode[][] = [];
+
+  const dfs = (nodeId: string, currentGroup: Set<string>) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    currentGroup.add(nodeId);
+
+    adjacency.get(nodeId)?.forEach(neighbor => {
+      dfs(neighbor, currentGroup);
+    });
+  };
+
+  nodes.forEach(node => {
+    if (!visited.has(node.id) && adjacency.get(node.id)!.size > 0) {
+      const currentGroup = new Set<string>();
+      dfs(node.id, currentGroup);
+
+      if (currentGroup.size >= 2) {
+        const groupNodes = nodes.filter(n => currentGroup.has(n.id));
+        groups.push(groupNodes);
+      }
+    }
+  });
+
+  return groups;
+};
 
 export default useStore;
