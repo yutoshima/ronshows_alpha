@@ -11,6 +11,21 @@ import {
 import { CustomNode, CustomEdge, LINK_STYLES, DEFAULT_EDGE_STYLE, PROBLEMS, DEFAULT_PROBLEM } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 
+export type FeedbackRuleConfig = {
+  id: 'nodes' | 'edges' | 'edgeTypes' | 'arrowDirections';
+  enabled: boolean;
+  weight: number;  // 点数の重み (合計100になるように調整)
+  messages: {
+    correct: string;
+    incorrect: string;
+  };
+};
+
+export type FeedbackConfig = {
+  rules: FeedbackRuleConfig[];
+  passingScore: number;  // 合格点 (0-100)
+};
+
 export type Settings = {
   linkColors: {
     basic: string;
@@ -38,6 +53,7 @@ export type Settings = {
     padding: number;
     borderWidth: number;
   };
+  feedbackConfig: FeedbackConfig;
 };
 
 export type LogEntry = {
@@ -125,6 +141,47 @@ export const DEFAULT_SETTINGS: Settings = {
     padding: 20,
     borderWidth: 2,
   },
+  feedbackConfig: {
+    passingScore: 100,
+    rules: [
+      {
+        id: 'nodes',
+        enabled: true,
+        weight: 25,
+        messages: {
+          correct: 'ノードは正解です',
+          incorrect: 'ノードの数または種類が正解と異なります',
+        },
+      },
+      {
+        id: 'edges',
+        enabled: true,
+        weight: 25,
+        messages: {
+          correct: '接続は正解です',
+          incorrect: 'リンクの接続関係が正解と異なります',
+        },
+      },
+      {
+        id: 'edgeTypes',
+        enabled: true,
+        weight: 25,
+        messages: {
+          correct: 'リンク種類は正解です',
+          incorrect: 'リンクの種類（演繹、仮定、対立、限定）が正解と異なります',
+        },
+      },
+      {
+        id: 'arrowDirections',
+        enabled: true,
+        weight: 25,
+        messages: {
+          correct: '矢印向きは正解です',
+          incorrect: '矢印の向きが正解と異なります',
+        },
+      },
+    ],
+  },
 };
 
 const loadSettings = (): Settings => {
@@ -195,48 +252,72 @@ const compareArrowDirections = (userEdges: CustomEdge[], modelEdges: CustomEdge[
   );
 };
 
-// スコア計算
-const calculateScore = (details: {
-  nodesCorrect: boolean;
-  edgesCorrect: boolean;
-  edgeTypesCorrect: boolean;
-  arrowDirectionsCorrect: boolean;
-}): number => {
+// スコア計算（設定可能なルールを使用）
+const calculateScore = (
+  details: {
+    nodesCorrect: boolean;
+    edgesCorrect: boolean;
+    edgeTypesCorrect: boolean;
+    arrowDirectionsCorrect: boolean;
+  },
+  config: FeedbackConfig
+): number => {
   let score = 0;
-  if (details.nodesCorrect) score += 25;
-  if (details.edgesCorrect) score += 25;
-  if (details.edgeTypesCorrect) score += 25;
-  if (details.arrowDirectionsCorrect) score += 25;
+  const detailsMap = {
+    nodes: details.nodesCorrect,
+    edges: details.edgesCorrect,
+    edgeTypes: details.edgeTypesCorrect,
+    arrowDirections: details.arrowDirectionsCorrect,
+  };
+
+  config.rules.forEach(rule => {
+    if (rule.enabled && detailsMap[rule.id]) {
+      score += rule.weight;
+    }
+  });
+
   return score;
 };
 
-// フィードバックメッセージ生成
-const generateFeedbackMessages = (params: {
-  nodesCorrect: boolean;
-  edgesCorrect: boolean;
-  edgeTypesCorrect: boolean;
-  arrowDirectionsCorrect: boolean;
-  nodes: CustomNode[];
-  edges: CustomEdge[];
-  modelAnswer: { nodes: CustomNode[]; edges: CustomEdge[] };
-}): string[] => {
+// フィードバックメッセージ生成（設定可能なルールを使用）
+const generateFeedbackMessages = (
+  params: {
+    nodesCorrect: boolean;
+    edgesCorrect: boolean;
+    edgeTypesCorrect: boolean;
+    arrowDirectionsCorrect: boolean;
+    nodes: CustomNode[];
+    edges: CustomEdge[];
+    modelAnswer: { nodes: CustomNode[]; edges: CustomEdge[] };
+  },
+  config: FeedbackConfig
+): string[] => {
   const messages: string[] = [];
 
-  if (!params.nodesCorrect) {
-    messages.push(`ノードの数または種類が正解と異なります。正解: ${params.modelAnswer.nodes.length}個、解答: ${params.nodes.length}個`);
-  }
-  if (!params.edgesCorrect) {
-    messages.push(`リンクの接続関係が正解と異なります。`);
-  }
-  if (!params.edgeTypesCorrect) {
-    messages.push(`リンクの種類（演繹、仮定、対立、限定）が正解と異なります。`);
-  }
-  if (!params.arrowDirectionsCorrect) {
-    messages.push(`矢印の向きが正解と異なります。`);
-  }
+  const detailsMap = {
+    nodes: params.nodesCorrect,
+    edges: params.edgesCorrect,
+    edgeTypes: params.edgeTypesCorrect,
+    arrowDirections: params.arrowDirectionsCorrect,
+  };
 
-  if (params.nodesCorrect && params.edgesCorrect && params.edgeTypesCorrect && params.arrowDirectionsCorrect) {
-    messages.push(`完璧です！全ての要素が正解です。`);
+  config.rules.forEach(rule => {
+    if (rule.enabled) {
+      const isCorrect = detailsMap[rule.id];
+      let message = isCorrect ? rule.messages.correct : rule.messages.incorrect;
+
+      // ノードの場合は詳細情報を追加
+      if (rule.id === 'nodes' && !isCorrect) {
+        message += `（正解: ${params.modelAnswer.nodes.length}個、解答: ${params.nodes.length}個）`;
+      }
+
+      messages.push(message);
+    }
+  });
+
+  const allCorrect = params.nodesCorrect && params.edgesCorrect && params.edgeTypesCorrect && params.arrowDirectionsCorrect;
+  if (allCorrect) {
+    messages.push('完璧です！全ての要素が正解です。');
   }
 
   return messages;
@@ -499,34 +580,43 @@ const useStore = create<RFState>((set, get) => ({
   },
 
   submitAnswer: () => {
-    const { nodes, edges, currentProblemId } = get();
+    const { nodes, edges, currentProblemId, settings } = get();
     const problem = PROBLEMS.find(p => p.id === currentProblemId);
     if (!problem) return null;
 
     const { modelAnswer } = problem;
+    const { feedbackConfig } = settings;
 
+    // 各ルールの判定結果を計算
     const nodesCorrect = compareNodes(nodes, modelAnswer.nodes);
     const edgesCorrect = compareEdgeConnections(edges, modelAnswer.edges);
     const edgeTypesCorrect = compareEdgeTypes(edges, modelAnswer.edges);
     const arrowDirectionsCorrect = compareArrowDirections(edges, modelAnswer.edges);
 
-    const correct = nodesCorrect && edgesCorrect && edgeTypesCorrect && arrowDirectionsCorrect;
-    const score = calculateScore({ nodesCorrect, edgesCorrect, edgeTypesCorrect, arrowDirectionsCorrect });
+    const details = { nodesCorrect, edgesCorrect, edgeTypesCorrect, arrowDirectionsCorrect };
 
-    const messages = generateFeedbackMessages({
-      nodesCorrect,
-      edgesCorrect,
-      edgeTypesCorrect,
-      arrowDirectionsCorrect,
-      nodes,
-      edges,
-      modelAnswer,
-    });
+    // 設定に基づいてスコアとメッセージを生成
+    const score = calculateScore(details, feedbackConfig);
+    const messages = generateFeedbackMessages(
+      {
+        nodesCorrect,
+        edgesCorrect,
+        edgeTypesCorrect,
+        arrowDirectionsCorrect,
+        nodes,
+        edges,
+        modelAnswer,
+      },
+      feedbackConfig
+    );
+
+    // 合格判定（設定された合格点を使用）
+    const correct = score >= feedbackConfig.passingScore;
 
     const result: FeedbackResult = {
       correct,
       score,
-      details: { nodesCorrect, edgesCorrect, edgeTypesCorrect, arrowDirectionsCorrect },
+      details,
       messages,
     };
 
