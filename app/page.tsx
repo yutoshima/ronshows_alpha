@@ -17,8 +17,10 @@ import useStore, { DEFAULT_SETTINGS, findLimiterGroups } from '../lib/store';
 import { v4 as uuidv4 } from 'uuid';
 
 // ノードの実際のサイズ定数
-const NODE_WIDTH = 180;   // UniversalNodeのminWidth
-const NODE_HEIGHT = 64;   // padding(py-3 = 24px) + text(~16px) + border(4px) + margin
+// minWidth(180) + px-4(32) + border-2(4) = 216px
+const NODE_WIDTH = 216;
+// py-3(24) + text(14) + border-2(4) + line-height(10) = 52px
+const NODE_HEIGHT = 52;
 
 const GroupBoxes = () => {
   const nodes = useStore((state) => state.nodes);
@@ -359,8 +361,8 @@ const Sidebar = () => {
 
   const onNodeClick = (nodeDef: any) => {
     const nodes = store.nodes;
-    const HORIZONTAL_SPACING = 220;  // NODE_WIDTH (180) + マージン (40)
-    const VERTICAL_SPACING = 100;     // 行間
+    const HORIZONTAL_SPACING = 250;  // NODE_WIDTH (180) + マージン (70)
+    const VERTICAL_SPACING = 120;     // 行間
     const COLUMNS = 4;                 // 1行あたりのノード数
     const START_X = 100;
     const START_Y = 100;
