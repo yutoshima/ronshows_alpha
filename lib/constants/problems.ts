@@ -1,53 +1,5 @@
-import { Node, Edge, MarkerType } from 'reactflow';
-
-export type NodeData = {
-  label: string;
-  type?: 'premise' | 'claim' | 'joint';
-};
-
-export type CustomNode = Node<NodeData>;
-export type CustomEdge = Edge;
-
-export const LINK_STYLES = {
-  basic: {
-    label: '演繹',
-    style: { stroke: '#333', strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#333' },
-    type: 'straight',
-  },
-  hypothetical: {
-    label: '仮定',
-    style: { stroke: '#333', strokeWidth: 2, strokeDasharray: '5, 5' },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#333' },
-    type: 'straight',
-  },
-  conflict: {
-    label: '対立',
-    style: { stroke: '#ef4444', strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' },
-    type: 'straight',
-  },
-  limiter: {
-    label: '限定',
-    style: { stroke: '#2563eb', strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' },
-    type: 'straight',
-  },
-};
-
-export const DEFAULT_EDGE_STYLE = LINK_STYLES.basic;
-
-// 問題定義の型
-export type Problem = {
-  id: string;
-  title: string;
-  description: string;
-  nodes: Array<{ id: string; label: string; type: 'premise' | 'claim' }>;
-  modelAnswer: {
-    nodes: CustomNode[];
-    edges: CustomEdge[];
-  };
-};
+import { MarkerType } from 'reactflow';
+import { Problem } from '../types';
 
 // 問題リスト
 export const PROBLEMS: Problem[] = [

@@ -8,12 +8,15 @@ import {
   applyEdgeChanges,
   MarkerType,
 } from 'reactflow';
-import { CustomNode, CustomEdge, LINK_STYLES, DEFAULT_EDGE_STYLE, PROBLEMS, DEFAULT_PROBLEM, Problem, validateProblem } from './constants';
+import { CustomNode, CustomEdge, Problem } from './types';
+import { LINK_STYLES, DEFAULT_EDGE_STYLE } from './constants/linkStyles';
+import { PROBLEMS, DEFAULT_PROBLEM, validateProblem } from './constants/problems';
 import { v4 as uuidv4 } from 'uuid';
 import { loadSettings, saveSettings, loadCustomProblems, saveCustomProblems } from './utils/storage';
 import { compareNodes, compareEdgeConnections, compareEdgeTypes, compareArrowDirections } from './utils/validation';
 import { calculateScore, generateFeedbackMessages, ValidationDetails } from './utils/feedback';
 import { Settings, LogEntry, FeedbackResult, DEFAULT_SETTINGS, FeedbackConfig } from './types';
+import { createMarkers } from './utils/edgeHelpers';
 
 // Re-export types for backward compatibility
 export type { Settings, LogEntry, FeedbackResult, FeedbackRuleConfig, FeedbackConfig } from './types';
@@ -155,26 +158,21 @@ const useStore = create<RFState>((set, get) => ({
   },
 
   onConnect: (connection) => {
+    if (!connection.source || !connection.target) return;
+
     get().pushHistory();
     const { settings } = get();
     const direction = settings.defaultArrowDirection;
     const color = settings.linkColors.basic;
 
-    let markerEnd, markerStart;
-    if (direction === 'forward') {
-      markerEnd = { type: MarkerType.ArrowClosed, color };
-      markerStart = undefined;
-    } else if (direction === 'backward') {
-      markerEnd = undefined;
-      markerStart = { type: MarkerType.ArrowClosed, color };
-    } else if (direction === 'bidirectional') {
-      markerEnd = { type: MarkerType.ArrowClosed, color };
-      markerStart = { type: MarkerType.ArrowClosed, color };
-    }
+    const { markerEnd, markerStart } = createMarkers(direction, color);
 
     const edge: CustomEdge = {
-      ...connection,
       id: uuidv4(),
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle,
       ...DEFAULT_EDGE_STYLE,
       markerEnd,
       markerStart,
@@ -231,18 +229,7 @@ const useStore = create<RFState>((set, get) => ({
           const baseStyle = e.style || {};
           const color = baseStyle.stroke || '#333';
 
-          let markerEnd, markerStart;
-
-          if (direction === 'forward') {
-            markerEnd = { type: MarkerType.ArrowClosed, color };
-            markerStart = undefined;
-          } else if (direction === 'backward') {
-            markerEnd = undefined;
-            markerStart = { type: MarkerType.ArrowClosed, color };
-          } else if (direction === 'bidirectional') {
-            markerEnd = { type: MarkerType.ArrowClosed, color };
-            markerStart = { type: MarkerType.ArrowClosed, color };
-          }
+          const { markerEnd, markerStart } = createMarkers(direction, color);
 
           return {
             ...e,

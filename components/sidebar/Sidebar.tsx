@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { CustomNode } from '../../lib/constants';
+import { CustomNode } from '../../lib/types';
 import useStore from '../../lib/store';
 import { SettingsPanel } from './SettingsPanel';
 import { LogPanel } from './LogPanel';
+
+type NodeDefinition = {
+  id: string;
+  label: string;
+  type: 'premise' | 'claim';
+};
 
 export const Sidebar = () => {
   const [activeTab, setActiveTab] = useState<'nodes' | 'settings' | 'logs'>('nodes');
@@ -13,12 +19,12 @@ export const Sidebar = () => {
 
   const currentProblem = getAllProblems().find((p) => p.id === currentProblemId);
 
-  const onDragStart = (event: React.DragEvent, nodeDef: any) => {
+  const onDragStart = (event: React.DragEvent, nodeDef: NodeDefinition) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(nodeDef));
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const onNodeClick = (nodeDef: any) => {
+  const onNodeClick = (nodeDef: NodeDefinition) => {
     const nodes = store.nodes;
     const HORIZONTAL_SPACING = 250;  // NODE_WIDTH (180) + マージン (70)
     const VERTICAL_SPACING = 120;     // 行間

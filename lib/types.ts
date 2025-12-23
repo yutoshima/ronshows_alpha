@@ -1,3 +1,27 @@
+import { Node, Edge } from 'reactflow';
+
+// Node and Edge types
+export type NodeData = {
+  label: string;
+  type?: 'premise' | 'claim' | 'joint';
+};
+
+export type CustomNode = Node<NodeData>;
+export type CustomEdge = Edge;
+
+// Problem definition type
+export type Problem = {
+  id: string;
+  title: string;
+  description: string;
+  nodes: Array<{ id: string; label: string; type: 'premise' | 'claim' }>;
+  modelAnswer: {
+    nodes: CustomNode[];
+    edges: CustomEdge[];
+  };
+};
+
+// Feedback types
 export type FeedbackRuleConfig = {
   id: 'nodes' | 'edges' | 'edgeTypes' | 'arrowDirections';
   enabled: boolean;

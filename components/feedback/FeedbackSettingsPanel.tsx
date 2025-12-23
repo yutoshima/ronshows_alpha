@@ -1,12 +1,13 @@
 import React from 'react';
 import useStore from '../../lib/store';
+import { FeedbackRuleConfig } from '../../lib/types';
 
 export const FeedbackSettingsPanel = () => {
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
   const { feedbackConfig } = settings;
 
-  const getRuleLabel = (id: string) => {
+  const getRuleLabel = (id: FeedbackRuleConfig['id']) => {
     switch (id) {
       case 'nodes': return 'ノード';
       case 'edges': return '接続';
@@ -16,7 +17,7 @@ export const FeedbackSettingsPanel = () => {
     }
   };
 
-  const updateRule = (ruleId: string, updates: any) => {
+  const updateRule = (ruleId: string, updates: Partial<Omit<FeedbackRuleConfig, 'id'>>) => {
     const newRules = feedbackConfig.rules.map(rule =>
       rule.id === ruleId ? { ...rule, ...updates } : rule
     );

@@ -1,11 +1,12 @@
 import React from 'react';
+import { LINK_STYLES } from '../../lib/constants/linkStyles';
 
 type EdgeContextMenuProps = {
   x: number;
   y: number;
   onClose: () => void;
-  onSelect: (styleKey: string) => void;
-  onDirectionSelect: (direction: string) => void;
+  onSelect: (styleKey: keyof typeof LINK_STYLES) => void;
+  onDirectionSelect: (direction: 'forward' | 'backward' | 'bidirectional') => void;
 };
 
 export const EdgeContextMenu = ({ x, y, onClose, onSelect, onDirectionSelect }: EdgeContextMenuProps) => {

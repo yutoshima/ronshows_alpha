@@ -1,6 +1,7 @@
 import React from 'react';
 import useStore, { DEFAULT_SETTINGS } from '../../lib/store';
 import { FeedbackSettingsPanel } from '../feedback/FeedbackSettingsPanel';
+import { ColorPicker } from '../common/ColorPicker';
 
 export const SettingsPanel = () => {
   const settings = useStore((state) => state.settings);
@@ -22,7 +23,7 @@ export const SettingsPanel = () => {
           className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
           value={settings.defaultArrowDirection}
           onChange={(e) => updateSettings({
-            defaultArrowDirection: e.target.value as any
+            defaultArrowDirection: e.target.value as 'forward' | 'backward' | 'bidirectional'
           })}
         >
           <option value="forward">→ 順方向</option>
@@ -50,21 +51,18 @@ export const SettingsPanel = () => {
         <h3 className="text-sm font-bold text-slate-700 mb-2">リンクの色</h3>
         <div className="space-y-2">
           {(['basic', 'hypothetical', 'conflict', 'limiter'] as const).map((type) => (
-            <div key={type} className="flex items-center gap-2">
-              <label className="text-xs flex-1">
-                {type === 'basic' ? '演繹' :
-                 type === 'hypothetical' ? '仮定' :
-                 type === 'conflict' ? '対立' : '限定'}
-              </label>
-              <input
-                type="color"
-                value={settings.linkColors[type]}
-                onChange={(e) => updateSettings({
-                  linkColors: { ...settings.linkColors, [type]: e.target.value }
-                })}
-                className="w-12 h-8 border border-slate-300 rounded cursor-pointer"
-              />
-            </div>
+            <ColorPicker
+              key={type}
+              label={
+                type === 'basic' ? '演繹' :
+                type === 'hypothetical' ? '仮定' :
+                type === 'conflict' ? '対立' : '限定'
+              }
+              value={settings.linkColors[type]}
+              onChange={(color) => updateSettings({
+                linkColors: { ...settings.linkColors, [type]: color }
+              })}
+            />
           ))}
         </div>
       </div>
@@ -77,57 +75,45 @@ export const SettingsPanel = () => {
               {nodeType === 'premise' ? '前提' : '結論'}
             </div>
             <div className="space-y-2 ml-2">
-              <div className="flex items-center gap-2">
-                <label className="text-xs flex-1">背景色</label>
-                <input
-                  type="color"
-                  value={settings.nodeColors[nodeType].background}
-                  onChange={(e) => updateSettings({
-                    nodeColors: {
-                      ...settings.nodeColors,
-                      [nodeType]: {
-                        ...settings.nodeColors[nodeType],
-                        background: e.target.value
-                      }
+              <ColorPicker
+                label="背景色"
+                value={settings.nodeColors[nodeType].background}
+                onChange={(color) => updateSettings({
+                  nodeColors: {
+                    ...settings.nodeColors,
+                    [nodeType]: {
+                      ...settings.nodeColors[nodeType],
+                      background: color
                     }
-                  })}
-                  className="w-12 h-7 border border-slate-300 rounded cursor-pointer"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs flex-1">枠線色</label>
-                <input
-                  type="color"
-                  value={settings.nodeColors[nodeType].border}
-                  onChange={(e) => updateSettings({
-                    nodeColors: {
-                      ...settings.nodeColors,
-                      [nodeType]: {
-                        ...settings.nodeColors[nodeType],
-                        border: e.target.value
-                      }
+                  }
+                })}
+              />
+              <ColorPicker
+                label="枠線色"
+                value={settings.nodeColors[nodeType].border}
+                onChange={(color) => updateSettings({
+                  nodeColors: {
+                    ...settings.nodeColors,
+                    [nodeType]: {
+                      ...settings.nodeColors[nodeType],
+                      border: color
                     }
-                  })}
-                  className="w-12 h-7 border border-slate-300 rounded cursor-pointer"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs flex-1">文字色</label>
-                <input
-                  type="color"
-                  value={settings.nodeColors[nodeType].text}
-                  onChange={(e) => updateSettings({
-                    nodeColors: {
-                      ...settings.nodeColors,
-                      [nodeType]: {
-                        ...settings.nodeColors[nodeType],
-                        text: e.target.value
-                      }
+                  }
+                })}
+              />
+              <ColorPicker
+                label="文字色"
+                value={settings.nodeColors[nodeType].text}
+                onChange={(color) => updateSettings({
+                  nodeColors: {
+                    ...settings.nodeColors,
+                    [nodeType]: {
+                      ...settings.nodeColors[nodeType],
+                      text: color
                     }
-                  })}
-                  className="w-12 h-7 border border-slate-300 rounded cursor-pointer"
-                />
-              </div>
+                  }
+                })}
+              />
             </div>
           </div>
         ))}
@@ -153,17 +139,13 @@ export const SettingsPanel = () => {
 
           {settings.groupBox.enabled && (
             <>
-              <div className="flex items-center gap-2">
-                <label className="text-xs flex-1">ボックスの色</label>
-                <input
-                  type="color"
-                  value={settings.groupBox.color}
-                  onChange={(e) => updateSettings({
-                    groupBox: { ...settings.groupBox, color: e.target.value }
-                  })}
-                  className="w-12 h-7 border border-slate-300 rounded cursor-pointer"
-                />
-              </div>
+              <ColorPicker
+                label="ボックスの色"
+                value={settings.groupBox.color}
+                onChange={(color) => updateSettings({
+                  groupBox: { ...settings.groupBox, color }
+                })}
+              />
 
               <div>
                 <label className="block text-xs text-slate-700 mb-1">

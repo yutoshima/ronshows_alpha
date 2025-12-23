@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
+import { NodeData } from '../../lib/types';
 
-export const UniversalNode = ({ data, selected }: any) => {
+export const UniversalNode = ({ data, selected }: NodeProps<NodeData>) => {
   const isClaim = data.type === 'claim';
   const baseStyle = "px-4 py-3 rounded-lg shadow-md border-2 text-sm font-medium w-full h-full flex items-center justify-center text-center transition-all";
   const colorStyle = isClaim

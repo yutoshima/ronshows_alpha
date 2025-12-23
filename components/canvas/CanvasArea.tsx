@@ -4,9 +4,11 @@ import ReactFlow, {
   Controls,
   ConnectionMode,
   useReactFlow,
+  Edge,
 } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
-import { CustomNode } from '../../lib/constants';
+import { CustomNode } from '../../lib/types';
+import { LINK_STYLES } from '../../lib/constants/linkStyles';
 import useStore from '../../lib/store';
 import { UniversalNode } from '../nodes/UniversalNode';
 import { GroupBoxes } from './GroupBoxes';
@@ -61,7 +63,7 @@ export const CanvasArea = () => {
   }, []);
 
   const onEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: any) => {
+    (event: React.MouseEvent, edge: Edge) => {
       event.preventDefault();
       event.stopPropagation();
       setMenu({ id: edge.id, x: event.clientX, y: event.clientY });
@@ -69,16 +71,16 @@ export const CanvasArea = () => {
     []
   );
 
-  const handleTypeSelect = (typeKey: any) => {
+  const handleTypeSelect = (typeKey: keyof typeof LINK_STYLES) => {
     if (menu) {
       store.updateEdgeType(menu.id, typeKey);
       setMenu(null);
     }
   };
 
-  const handleDirectionSelect = (direction: string) => {
+  const handleDirectionSelect = (direction: 'forward' | 'backward' | 'bidirectional') => {
     if (menu) {
-      store.updateEdgeDirection(menu.id, direction as 'forward' | 'backward' | 'bidirectional');
+      store.updateEdgeDirection(menu.id, direction);
       setMenu(null);
     }
   };

@@ -1,5 +1,8 @@
 import React from 'react';
 import useStore from '../../lib/store';
+import { FeedbackHeader } from './FeedbackHeader';
+import { FeedbackDetails } from './FeedbackDetails';
+import { FeedbackMessages } from './FeedbackMessages';
 
 export const FeedbackPanel = () => {
   const result = useStore((state) => state.feedbackResult);
@@ -14,103 +17,9 @@ export const FeedbackPanel = () => {
         result.correct ? 'border-green-500' : 'border-red-500'
       }`}
     >
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className={`text-4xl ${
-            result.correct ? 'text-green-500' : 'text-red-500'
-          }`}
-        >
-          {result.correct ? '✓' : '×'}
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-slate-800">
-            {result.correct ? '正解です！' : '不正解です'}
-          </h3>
-          <div className="text-lg text-slate-600">スコア: {result.score}/100</div>
-        </div>
-      </div>
-
-      <div className="space-y-2 mb-4">
-        <div
-          className={`flex items-center gap-2 p-2 rounded ${
-            result.details.nodesCorrect ? 'bg-green-50' : 'bg-red-50'
-          }`}
-        >
-          <span
-            className={`font-bold ${
-              result.details.nodesCorrect ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            {result.details.nodesCorrect ? '✓' : '×'}
-          </span>
-          <span className="text-sm text-slate-700">
-            ノード: {result.details.nodesCorrect ? '正解' : '不正解'}
-          </span>
-        </div>
-        <div
-          className={`flex items-center gap-2 p-2 rounded ${
-            result.details.edgesCorrect ? 'bg-green-50' : 'bg-red-50'
-          }`}
-        >
-          <span
-            className={`font-bold ${
-              result.details.edgesCorrect ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            {result.details.edgesCorrect ? '✓' : '×'}
-          </span>
-          <span className="text-sm text-slate-700">
-            接続: {result.details.edgesCorrect ? '正解' : '不正解'}
-          </span>
-        </div>
-        <div
-          className={`flex items-center gap-2 p-2 rounded ${
-            result.details.edgeTypesCorrect ? 'bg-green-50' : 'bg-red-50'
-          }`}
-        >
-          <span
-            className={`font-bold ${
-              result.details.edgeTypesCorrect ? 'text-green-600' : 'text-red-600'
-            }`}
-          >
-            {result.details.edgeTypesCorrect ? '✓' : '×'}
-          </span>
-          <span className="text-sm text-slate-700">
-            リンク種類: {result.details.edgeTypesCorrect ? '正解' : '不正解'}
-          </span>
-        </div>
-        <div
-          className={`flex items-center gap-2 p-2 rounded ${
-            result.details.arrowDirectionsCorrect ? 'bg-green-50' : 'bg-red-50'
-          }`}
-        >
-          <span
-            className={`font-bold ${
-              result.details.arrowDirectionsCorrect
-                ? 'text-green-600'
-                : 'text-red-600'
-            }`}
-          >
-            {result.details.arrowDirectionsCorrect ? '✓' : '×'}
-          </span>
-          <span className="text-sm text-slate-700">
-            矢印向き: {result.details.arrowDirectionsCorrect ? '正解' : '不正解'}
-          </span>
-        </div>
-      </div>
-
-      {result.messages.length > 0 && (
-        <div className="mb-4 p-3 bg-slate-50 rounded border border-slate-200">
-          <div className="text-xs font-bold text-slate-600 mb-2">フィードバック:</div>
-          <div className="space-y-1">
-            {result.messages.map((msg, i) => (
-              <p key={i} className="text-sm text-slate-700">
-                • {msg}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
+      <FeedbackHeader correct={result.correct} score={result.score} />
+      <FeedbackDetails details={result.details} />
+      <FeedbackMessages messages={result.messages} />
 
       <div className="flex gap-2">
         {result.correct && (
